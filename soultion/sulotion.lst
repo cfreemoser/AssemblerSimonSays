@@ -1,0 +1,577 @@
+sulotion                                                                                                                PAGE 1
+                         1     ;simon.asm - Game of Simon Says for 8051 Microcontroller
+                         2     ;Copyright (C) 2006 Danko Krajisnik
+                         3
+                         4     ;This program is free software; you can redistribute it and/or
+                         5     ;modify it under the terms of the GNU General Public License
+                         6     ;as published by the Free Software Foundation; either version 2
+                         7     ;of the License, or (at your option) any later version.
+                         8
+                         9     ;This program is distributed in the hope that it will be useful,
+                        10     ;but WITHOUT ANY WARRANTY; without even the implied warranty of
+                        11     ;MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+                        12     ;GNU General Public License for more details.
+                        13
+                        14     ;You should have received a copy of the GNU General Public License
+                        15     ;along with this program; if not, write to the Free Software
+                        16     ;Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+                        17
+                        18     ; start switch
+  00B7                  19     start_sw    .equ    P3.7
+                        20
+                        21     ; input switches
+  00B2                  22     red_sw        .equ    P3.2
+  00B3                  23     green_sw    .equ    P3.3
+  00B4                  24     yellow_sw    .equ    P3.4
+  00B5                  25     blue_sw    .equ    P3.5
+                        26
+                        27     ; output LED's
+  0094                  28     red_led    .equ    P1.4
+  0095                  29     green_led    .equ    P1.5
+  0096                  30     yellow_led    .equ    P1.6
+  0097                  31     blue_led    .equ    P1.7
+                        32
+                        33
+                        34     ; status LED's
+  00B0                  35     wrong_led    .equ    P3.0
+  00B1                  36     right_led    .equ    P3.1
+                        37
+  0030                  38     counter    .equ    30h
+  0031                  39     input_val    .equ    31h
+  0040                  40     sequence        .equ    40h
+                        41
+                        42     .org    00h
+0000 2134               43         ajmp    start
+                        44
+                        45     .org    03h
+0003 32                 46         reti
+                        47
+                        48     .org    0bh
+000B 32                 49         reti
+                        50
+                        51     .org    13h
+0013 32                 52         reti
+                        53
+                        54     .org    1bh
+001B 32                 55         reti
+                        56
+                        57     .org    23h
+0023 32                 58         reti
+                        59
+                        60     .org    25h
+0025 32                 61         reti
+                        62
+                        63     ; delay for short time
+                        64     delay_short:
+0026 7FFF               65         mov    r7, #0ffh
+0028 DFFE               66         djnz    r7, $
+002A 22                 67         ret
+                        68
+                        69     ; delay longer
+                        70     delay_medium:
+002B 7EFF               71         mov    r6, #0ffh
+                        72     loop_delay_medium:
+002D 1126               73         acall    delay_short
+002F DEFC               74         djnz    r6, loop_delay_medium
+0031 22                 75         ret
+                        76
+                        77     ; delay even longer
+                        78     delay_long:
+0032 7D04               79         mov    r5, #04h
+                        80     loop_delay_long:
+0034 112B               81         acall    delay_medium
+0036 DDFC               82         djnz    r5, loop_delay_long
+0038 22                 83         ret
+                        84
+                        85     ; flash red status led 3 times
+                        86     ; to be used after incorrect input sequence
+                        87     flash_wrong:
+0039 C2B0               88         clr    wrong_led
+003B 112B               89         acall    delay_medium
+003D D2B0               90         setb    wrong_led
+003F 112B               91         acall    delay_medium
+0041 C2B0               92         clr    wrong_led
+0043 112B               93         acall    delay_medium
+0045 D2B0               94         setb    wrong_led
+0047 112B               95         acall    delay_medium
+0049 C2B0               96         clr    wrong_led
+004B 112B               97         acall    delay_medium
+004D D2B0               98         setb    wrong_led
+004F 22                 99         ret
+                       100
+                       101     ; flash green status led once
+                       102     ; to be used after every correct user input sequence
+                       103     flash_right:
+0050 C2B1              104         clr    right_led
+0052 112B              105         acall    delay_medium
+0054 D2B1              106         setb    right_led
+0056 22                107         ret
+                       108
+                       109     ; flash green status led 3 times
+                       110     ; to be used after counter is maxed out
+                       111     flash_win:
+0057 C2B1              112         clr    right_led
+0059 112B              113         acall    delay_medium
+005B D2B1              114         setb    right_led
+005D 112B              115         acall    delay_medium
+005F C2B1              116         clr    right_led
+0061 112B              117         acall    delay_medium
+0063 D2B1              118         setb    right_led
+0065 112B              119         acall    delay_medium
+0067 C2B1              120         clr    right_led
+0069 112B              121         acall    delay_medium
+006B D2B1              122         setb    right_led
+006D 22                123         ret
+                       124
+                       125     ; flash the red led
+                       126     flash_red:
+006E C294              127         clr    red_led
+0070 112B              128         acall    delay_medium
+0072 D294              129         setb    red_led
+0074 22                130         ret
+                       131
+                       132     ; flash the green led
+                       133     flash_green:
+0075 C295              134         clr    green_led
+0077 112B              135         acall    delay_medium
+0079 D295              136         setb    green_led
+007B 22                137         ret
+                       138
+                       139     ; flash the yellow led
+                       140     flash_yellow:
+007C C296              141         clr    yellow_led
+007E 112B              142         acall    delay_medium
+0080 D296              143         setb    yellow_led
+0082 22                144         ret
+                       145
+                       146     ; flash the blue led
+                       147     flash_blue:
+0083 C297              148         clr    blue_led
+0085 112B              149         acall    delay_medium
+0087 D297              150         setb    blue_led
+0089 22                151         ret
+                       152
+                       153     ; add extra random byte to sequence sequence
+                       154     add_random:
+008A 7440              155         mov    a, #sequence
+008C 2530              156         add    a, counter
+008E F8                157         mov    r0, a
+008F E58A              158         mov    a, TL0
+                       159
+                       160         ; divide timer value by 2 - fix odd/even issues
+0091 75F002            161         mov    B, #02h
+0094 84                162         div    ab
+                       163
+                       164         ; isolate lowest 2 bits (random byte will be 0 - 3)
+0095 75F040            165         mov    B, #040h
+0098 A4                166         mul    ab
+0099 75F040            167         mov    B, #040h
+009C 84                168         div    ab
+                       169
+009D F6                170         mov    @r0, a
+009E 0530              171         inc    counter
+00A0 22                172         ret
+                       173
+                       174     ; read input switch
+                       175     ; store value in input_val
+                       176     ; input_val is modified as follows:
+                       177     ; 0 - red switch was pressed
+                       178     ; 1 - green switch was pressed
+                       179     ; 2 - yellow switch was pressed
+                       180     ; 3 - blue switch was pressed
+                       181     read_switch:
+00A1 30B526            182         jnb    blue_sw, blue_sw_input
+00A4 30B41A            183         jnb    yellow_sw, yellow_sw_input
+00A7 30B30E            184         jnb    green_sw, green_sw_input
+00AA 30B202            185         jnb    red_sw, red_sw_input
+00AD 01A1              186         ajmp    read_switch
+                       187     red_sw_input:
+00AF 116E              188         acall    flash_red
+00B1 753100            189         mov    input_val, #00h
+00B4 30B2FD            190         jnb    red_sw, $
+00B7 22                191         ret
+                       192     green_sw_input:
+00B8 1175              193         acall    flash_green
+00BA 753101            194         mov    input_val, #01h
+00BD 30B3FD            195         jnb    green_sw, $
+00C0 22                196         ret
+                       197     yellow_sw_input:
+00C1 117C              198         acall    flash_yellow
+00C3 753102            199         mov    input_val, #02h
+00C6 30B4FD            200         jnb    yellow_sw, $
+00C9 22                201         ret
+                       202     blue_sw_input:
+00CA 1183              203         acall    flash_blue
+00CC 753103            204         mov    input_val, #03h
+00CF 30B5FD            205         jnb    blue_sw, $
+00D2 22                206         ret
+                       207
+                       208     ; flash entire sequence of sequence
+                       209     flash_sequence:
+00D3 7800              210         mov    r0, #00h
+                       211     flash_sequence_loop:
+00D5 E530              212         mov    a, counter
+00D7 98                213         subb    a, r0
+00D8 6024              214         jz    flash_sequence_loop_end
+                       215
+00DA 7440              216         mov    a, #sequence
+00DC 28                217         add    a, r0
+00DD F9                218         mov    r1, a
+00DE E7                219         mov    a, @r1
+                       220
+                       221         ; if sequence is 0 - flash red led
+00DF 600A              222         jz    flash_sequence_red
+                       223
+                       224         ; if sequence is 1 - flash green led
+00E1 9401              225         subb    a, #01h
+00E3 600A              226         jz    flash_sequence_green
+                       227
+                       228         ; if sequence is 2 - flash yellow led
+00E5 9401              229         subb    a, #01h
+00E7 600A              230         jz    flash_sequence_yellow
+                       231
+                       232         ; else (sequence is 3) - flash blue led
+00E9 01F7              233         ajmp    flash_sequence_blue
+                       234
+                       235     flash_sequence_red:
+00EB 116E              236         acall    flash_red
+00ED 01F9              237         ajmp    flash_sequence_over
+                       238     flash_sequence_green:
+00EF 1175              239         acall    flash_green
+00F1 01F9              240         ajmp    flash_sequence_over
+                       241     flash_sequence_yellow:
+00F3 117C              242         acall    flash_yellow
+00F5 01F9              243         ajmp    flash_sequence_over
+                       244     flash_sequence_blue:
+00F7 1183              245         acall    flash_blue
+                       246
+                       247     flash_sequence_over:
+00F9 1132              248         acall    delay_long
+                       249
+00FB 08                250         inc    r0
+00FC 01D5              251         ajmp    flash_sequence_loop
+                       252     flash_sequence_loop_end:
+00FE 22                253         ret
+                       254
+                       255     ; read switch and compare user input to stored sequence
+                       256     accept_input:
+00FF 7800              257         mov    r0, #00h
+0101 7C00              258         mov    r4, #00h
+                       259     accept_input_loop:
+0103 E530              260         mov    a, counter
+0105 98                261         subb    a, r0
+0106 6012              262         jz    accept_input_loop_end
+                       263
+0108 11A1              264         acall    read_switch
+                       265
+010A 7440              266         mov    a, #sequence
+010C 28                267         add    a, r0
+010D F9                268         mov    r1, a
+010E E7                269         mov    a, @r1
+                       270
+010F 9531              271         subb    a, input_val
+0111 6004              272         jz    accept_input_loop_cont
+0113 7C01              273         mov    r4, #01h
+0115 211A              274         ajmp    accept_input_loop_end
+                       275
+                       276     accept_input_loop_cont:
+                       277
+0117 08                278         inc    r0
+0118 2103              279         ajmp    accept_input_loop
+                       280
+                       281     accept_input_loop_end:
+011A 22                282         ret
+                       283
+                       284     init:
+                       285         ; timer 0 - 16 bit mode
+011B 758901            286         mov    TMOD, #01h
+011E D28C              287         setb    TR0
+                       288
+0120 75D000            289         mov    PSW, #00h
+0123 75A800            290         mov    IE, #00h
+                       291
+                       292         ; initialize counter
+0126 753000            293         mov    counter, #00h
+                       294
+                       295         ; activate switches
+0129 D2B2              296         setb    red_sw
+012B D2B3              297         setb    green_sw
+012D D2B4              298         setb    yellow_sw
+012F D2B5              299         setb    blue_sw
+0131 D2B7              300         setb    start_sw
+                       301
+0133 22                302         ret
+                       303
+                       304     start:
+0134 311B              305         acall    init
+                       306
+                       307     ; wait for user to press and release start switch
+                       308     wait_start_sw:
+0136 20B7FD            309         jb    start_sw, $
+0139 30B7FD            310         jnb    start_sw, $
+                       311
+013C 1132              312         acall    delay_long
+013E 1132              313         acall    delay_long
+                       314
+                       315     loop:
+0140 118A              316         acall    add_random
+0142 11D3              317         acall    flash_sequence
+0144 11FF              318         acall    accept_input
+                       319
+0146 1132              320         acall    delay_long
+                       321
+0148 EC                322         mov    a, r4
+0149 6007              323         jz    cont1
+                       324
+014B 1139              325         acall    flash_wrong
+014D 753000            326         mov    counter, #00h
+0150 2136              327         ajmp    wait_start_sw
+                       328
+                       329     cont1:
+0152 E530              330         mov    a, counter
+0154 B40A07            331         cjne    a, #0Ah, cont2
+                       332
+0157 1157              333         acall    flash_win
+0159 753000            334         mov    counter, #00h
+015C 2136              335         ajmp    wait_start_sw
+                       336
+                       337     cont2:
+015E 1150              338         acall    flash_right
+0160 1132              339         acall    delay_long
+0162 2140              340         ajmp    loop
+                       341
+                       342     .end
+ASSEMBLY COMPLETE, NO ERRORS FOUND, NO WARNINGS
+
+
+SYMBOL TABLE:
+??MCU_8051_IDE . . . . . . . . . . .  N  NUMB  8051H  NOT USED
+??VERSION. . . . . . . . . . . . . .  N  NUMB  0146H  NOT USED
+AC . . . . . . . . . . . . . . . . .  B  ADDR  00D6H  NOT USED
+ACC. . . . . . . . . . . . . . . . .  D  ADDR  00E0H  NOT USED
+ACCEPT_INPUT . . . . . . . . . . . .  C  ADDR  00FFH
+ACCEPT_INPUT_LOOP. . . . . . . . . .  C  ADDR  0103H
+ACCEPT_INPUT_LOOP_CONT . . . . . . .  C  ADDR  0117H
+ACCEPT_INPUT_LOOP_END. . . . . . . .  C  ADDR  011AH
+ACSR . . . . . . . . . . . . . . . .  D  ADDR  0097H  NOT USED
+ADCF . . . . . . . . . . . . . . . .  D  ADDR  00F6H  NOT USED
+ADCLK. . . . . . . . . . . . . . . .  D  ADDR  00F2H  NOT USED
+ADCON. . . . . . . . . . . . . . . .  D  ADDR  00F3H  NOT USED
+ADDH . . . . . . . . . . . . . . . .  D  ADDR  00F5H  NOT USED
+ADDL . . . . . . . . . . . . . . . .  D  ADDR  00F4H  NOT USED
+ADD_RANDOM . . . . . . . . . . . . .  C  ADDR  008AH
+AUXR . . . . . . . . . . . . . . . .  D  ADDR  008EH  NOT USED
+AUXR1. . . . . . . . . . . . . . . .  D  ADDR  00A2H  NOT USED
+B. . . . . . . . . . . . . . . . . .  D  ADDR  00F0H
+BDRCON . . . . . . . . . . . . . . .  D  ADDR  009BH  NOT USED
+BDRCON_1 . . . . . . . . . . . . . .  D  ADDR  009CH  NOT USED
+BLUE_LED . . . . . . . . . . . . . .  N  NUMB  0097H
+BLUE_SW. . . . . . . . . . . . . . .  N  NUMB  00B5H
+BLUE_SW_INPUT. . . . . . . . . . . .  C  ADDR  00CAH
+BRL. . . . . . . . . . . . . . . . .  D  ADDR  009AH  NOT USED
+CCAP0H . . . . . . . . . . . . . . .  D  ADDR  00FAH  NOT USED
+CCAP0L . . . . . . . . . . . . . . .  D  ADDR  00EAH  NOT USED
+CCAP1H . . . . . . . . . . . . . . .  D  ADDR  00FBH  NOT USED
+CCAP1L . . . . . . . . . . . . . . .  D  ADDR  00EBH  NOT USED
+CCAP2H . . . . . . . . . . . . . . .  D  ADDR  00FCH  NOT USED
+CCAP3H . . . . . . . . . . . . . . .  D  ADDR  00FDH  NOT USED
+CCAP4H . . . . . . . . . . . . . . .  D  ADDR  00FEH  NOT USED
+CCAPL2H. . . . . . . . . . . . . . .  D  ADDR  00FCH  NOT USED
+CCAPL2L. . . . . . . . . . . . . . .  D  ADDR  00ECH  NOT USED
+CCAPL3H. . . . . . . . . . . . . . .  D  ADDR  00FDH  NOT USED
+CCAPL3L. . . . . . . . . . . . . . .  D  ADDR  00EDH  NOT USED
+CCAPL4H. . . . . . . . . . . . . . .  D  ADDR  00FEH  NOT USED
+CCAPL4L. . . . . . . . . . . . . . .  D  ADDR  00EEH  NOT USED
+CCAPM0 . . . . . . . . . . . . . . .  D  ADDR  00DAH  NOT USED
+CCAPM1 . . . . . . . . . . . . . . .  D  ADDR  00DBH  NOT USED
+CCAPM2 . . . . . . . . . . . . . . .  D  ADDR  00DCH  NOT USED
+CCAPM3 . . . . . . . . . . . . . . .  D  ADDR  00DDH  NOT USED
+CCAPM4 . . . . . . . . . . . . . . .  D  ADDR  00DEH  NOT USED
+CCF0 . . . . . . . . . . . . . . . .  B  ADDR  00D8H  NOT USED
+CCF1 . . . . . . . . . . . . . . . .  B  ADDR  00D9H  NOT USED
+CCF2 . . . . . . . . . . . . . . . .  B  ADDR  00DAH  NOT USED
+CCF3 . . . . . . . . . . . . . . . .  B  ADDR  00DBH  NOT USED
+CCF4 . . . . . . . . . . . . . . . .  B  ADDR  00DCH  NOT USED
+CCON . . . . . . . . . . . . . . . .  D  ADDR  00D8H  NOT USED
+CFINT. . . . . . . . . . . . . . . .  C  ADDR  0033H  NOT USED
+CH . . . . . . . . . . . . . . . . .  D  ADDR  00F9H  NOT USED
+CKCON. . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
+CKCON0 . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
+CKRL . . . . . . . . . . . . . . . .  D  ADDR  0097H  NOT USED
+CKSEL. . . . . . . . . . . . . . . .  D  ADDR  0085H  NOT USED
+CL . . . . . . . . . . . . . . . . .  D  ADDR  00E9H  NOT USED
+CLKREG . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
+CMOD . . . . . . . . . . . . . . . .  D  ADDR  00D9H  NOT USED
+CONT1. . . . . . . . . . . . . . . .  C  ADDR  0152H
+CONT2. . . . . . . . . . . . . . . .  C  ADDR  015EH
+COUNTER. . . . . . . . . . . . . . .  N  NUMB  0030H
+CPRL2. . . . . . . . . . . . . . . .  B  ADDR  00C8H  NOT USED
+CR . . . . . . . . . . . . . . . . .  B  ADDR  00DEH  NOT USED
+CT2. . . . . . . . . . . . . . . . .  B  ADDR  00C9H  NOT USED
+CY . . . . . . . . . . . . . . . . .  B  ADDR  00D7H  NOT USED
+DELAY_LONG . . . . . . . . . . . . .  C  ADDR  0032H
+DELAY_MEDIUM . . . . . . . . . . . .  C  ADDR  002BH
+DELAY_SHORT. . . . . . . . . . . . .  C  ADDR  0026H
+DP0H . . . . . . . . . . . . . . . .  D  ADDR  0083H  NOT USED
+DP0L . . . . . . . . . . . . . . . .  D  ADDR  0082H  NOT USED
+DP1H . . . . . . . . . . . . . . . .  D  ADDR  0085H  NOT USED
+DP1L . . . . . . . . . . . . . . . .  D  ADDR  0084H  NOT USED
+DPH. . . . . . . . . . . . . . . . .  D  ADDR  0083H  NOT USED
+DPL. . . . . . . . . . . . . . . . .  D  ADDR  0082H  NOT USED
+EA . . . . . . . . . . . . . . . . .  B  ADDR  00AFH  NOT USED
+EC . . . . . . . . . . . . . . . . .  B  ADDR  00AEH  NOT USED
+EECON. . . . . . . . . . . . . . . .  D  ADDR  0096H  NOT USED
+ES . . . . . . . . . . . . . . . . .  B  ADDR  00ACH  NOT USED
+ET0. . . . . . . . . . . . . . . . .  B  ADDR  00A9H  NOT USED
+ET1. . . . . . . . . . . . . . . . .  B  ADDR  00ABH  NOT USED
+ET2. . . . . . . . . . . . . . . . .  B  ADDR  00ADH  NOT USED
+EX0. . . . . . . . . . . . . . . . .  B  ADDR  00A8H  NOT USED
+EX1. . . . . . . . . . . . . . . . .  B  ADDR  00AAH  NOT USED
+EXEN2. . . . . . . . . . . . . . . .  B  ADDR  00CBH  NOT USED
+EXF2 . . . . . . . . . . . . . . . .  B  ADDR  00CEH  NOT USED
+EXTI0. . . . . . . . . . . . . . . .  C  ADDR  0003H  NOT USED
+EXTI1. . . . . . . . . . . . . . . .  C  ADDR  0013H  NOT USED
+F0 . . . . . . . . . . . . . . . . .  B  ADDR  00D5H  NOT USED
+FE . . . . . . . . . . . . . . . . .  B  ADDR  009FH  NOT USED
+FLASH_BLUE . . . . . . . . . . . . .  C  ADDR  0083H
+FLASH_GREEN. . . . . . . . . . . . .  C  ADDR  0075H
+FLASH_RED. . . . . . . . . . . . . .  C  ADDR  006EH
+FLASH_RIGHT. . . . . . . . . . . . .  C  ADDR  0050H
+FLASH_SEQUENCE . . . . . . . . . . .  C  ADDR  00D3H
+FLASH_SEQUENCE_BLUE. . . . . . . . .  C  ADDR  00F7H
+FLASH_SEQUENCE_GREEN . . . . . . . .  C  ADDR  00EFH
+FLASH_SEQUENCE_LOOP. . . . . . . . .  C  ADDR  00D5H
+FLASH_SEQUENCE_LOOP_END. . . . . . .  C  ADDR  00FEH
+FLASH_SEQUENCE_OVER. . . . . . . . .  C  ADDR  00F9H
+FLASH_SEQUENCE_RED . . . . . . . . .  C  ADDR  00EBH
+FLASH_SEQUENCE_YELLOW. . . . . . . .  C  ADDR  00F3H
+FLASH_WIN. . . . . . . . . . . . . .  C  ADDR  0057H
+FLASH_WRONG. . . . . . . . . . . . .  C  ADDR  0039H
+FLASH_YELLOW . . . . . . . . . . . .  C  ADDR  007CH
+GREEN_LED. . . . . . . . . . . . . .  N  NUMB  0095H
+GREEN_SW . . . . . . . . . . . . . .  N  NUMB  00B3H
+GREEN_SW_INPUT . . . . . . . . . . .  C  ADDR  00B8H
+IE . . . . . . . . . . . . . . . . .  D  ADDR  00A8H
+IE0. . . . . . . . . . . . . . . . .  B  ADDR  0089H  NOT USED
+IE1. . . . . . . . . . . . . . . . .  B  ADDR  008BH  NOT USED
+INIT . . . . . . . . . . . . . . . .  C  ADDR  011BH
+INPUT_VAL. . . . . . . . . . . . . .  N  NUMB  0031H
+INT0 . . . . . . . . . . . . . . . .  B  ADDR  00B2H  NOT USED
+INT1 . . . . . . . . . . . . . . . .  B  ADDR  00B3H  NOT USED
+IP . . . . . . . . . . . . . . . . .  D  ADDR  00B8H  NOT USED
+IPH. . . . . . . . . . . . . . . . .  D  ADDR  00B7H  NOT USED
+IPH0 . . . . . . . . . . . . . . . .  D  ADDR  00B7H  NOT USED
+IPH1 . . . . . . . . . . . . . . . .  D  ADDR  00B3H  NOT USED
+IPL0 . . . . . . . . . . . . . . . .  D  ADDR  00B8H  NOT USED
+IPL1 . . . . . . . . . . . . . . . .  D  ADDR  00B2H  NOT USED
+IT0. . . . . . . . . . . . . . . . .  B  ADDR  0088H  NOT USED
+IT1. . . . . . . . . . . . . . . . .  B  ADDR  008AH  NOT USED
+KBE. . . . . . . . . . . . . . . . .  D  ADDR  009DH  NOT USED
+KBF. . . . . . . . . . . . . . . . .  D  ADDR  009EH  NOT USED
+KBLS . . . . . . . . . . . . . . . .  D  ADDR  009CH  NOT USED
+LOOP . . . . . . . . . . . . . . . .  C  ADDR  0140H
+LOOP_DELAY_LONG. . . . . . . . . . .  C  ADDR  0034H
+LOOP_DELAY_MEDIUM. . . . . . . . . .  C  ADDR  002DH
+OSCCON . . . . . . . . . . . . . . .  D  ADDR  0086H  NOT USED
+OV . . . . . . . . . . . . . . . . .  B  ADDR  00D2H  NOT USED
+P. . . . . . . . . . . . . . . . . .  B  ADDR  00D0H  NOT USED
+P0 . . . . . . . . . . . . . . . . .  D  ADDR  0080H  NOT USED
+P1 . . . . . . . . . . . . . . . . .  D  ADDR  0090H  NOT USED
+P1M1 . . . . . . . . . . . . . . . .  D  ADDR  00D4H  NOT USED
+P1M2 . . . . . . . . . . . . . . . .  D  ADDR  00E2H  NOT USED
+P2 . . . . . . . . . . . . . . . . .  D  ADDR  00A0H  NOT USED
+P3 . . . . . . . . . . . . . . . . .  D  ADDR  00B0H  NOT USED
+P3M1 . . . . . . . . . . . . . . . .  D  ADDR  00D5H  NOT USED
+P3M2 . . . . . . . . . . . . . . . .  D  ADDR  00E3H  NOT USED
+P4 . . . . . . . . . . . . . . . . .  D  ADDR  00C0H  NOT USED
+P4M1 . . . . . . . . . . . . . . . .  D  ADDR  00D6H  NOT USED
+P4M2 . . . . . . . . . . . . . . . .  D  ADDR  00E4H  NOT USED
+P5 . . . . . . . . . . . . . . . . .  D  ADDR  00E8H  NOT USED
+PC . . . . . . . . . . . . . . . . .  B  ADDR  00BEH  NOT USED
+PCON . . . . . . . . . . . . . . . .  D  ADDR  0087H  NOT USED
+PPCL . . . . . . . . . . . . . . . .  B  ADDR  00BEH  NOT USED
+PS . . . . . . . . . . . . . . . . .  B  ADDR  00BCH  NOT USED
+PSL. . . . . . . . . . . . . . . . .  B  ADDR  00BCH  NOT USED
+PSW. . . . . . . . . . . . . . . . .  D  ADDR  00D0H
+PT0. . . . . . . . . . . . . . . . .  B  ADDR  00B9H  NOT USED
+PT0L . . . . . . . . . . . . . . . .  B  ADDR  00B9H  NOT USED
+PT1. . . . . . . . . . . . . . . . .  B  ADDR  00BBH  NOT USED
+PT1L . . . . . . . . . . . . . . . .  B  ADDR  00BBH  NOT USED
+PT2. . . . . . . . . . . . . . . . .  B  ADDR  00BDH  NOT USED
+PT2L . . . . . . . . . . . . . . . .  B  ADDR  00BDH  NOT USED
+PX0. . . . . . . . . . . . . . . . .  B  ADDR  00B8H  NOT USED
+PX0L . . . . . . . . . . . . . . . .  B  ADDR  00B8H  NOT USED
+PX1. . . . . . . . . . . . . . . . .  B  ADDR  00BAH  NOT USED
+PX1L . . . . . . . . . . . . . . . .  B  ADDR  00BAH  NOT USED
+RB8. . . . . . . . . . . . . . . . .  B  ADDR  009AH  NOT USED
+RCAP2H . . . . . . . . . . . . . . .  D  ADDR  00CBH  NOT USED
+RCAP2L . . . . . . . . . . . . . . .  D  ADDR  00CAH  NOT USED
+RCLK . . . . . . . . . . . . . . . .  B  ADDR  00CDH  NOT USED
+RD . . . . . . . . . . . . . . . . .  B  ADDR  00B7H  NOT USED
+READ_SWITCH. . . . . . . . . . . . .  C  ADDR  00A1H
+RED_LED. . . . . . . . . . . . . . .  N  NUMB  0094H
+RED_SW . . . . . . . . . . . . . . .  N  NUMB  00B2H
+RED_SW_INPUT . . . . . . . . . . . .  C  ADDR  00AFH
+REN. . . . . . . . . . . . . . . . .  B  ADDR  009CH  NOT USED
+RESET. . . . . . . . . . . . . . . .  C  ADDR  0000H  NOT USED
+RI . . . . . . . . . . . . . . . . .  B  ADDR  0098H  NOT USED
+RIGHT_LED. . . . . . . . . . . . . .  N  NUMB  00B1H
+RS0. . . . . . . . . . . . . . . . .  B  ADDR  00D3H  NOT USED
+RS1. . . . . . . . . . . . . . . . .  B  ADDR  00D4H  NOT USED
+RXD. . . . . . . . . . . . . . . . .  B  ADDR  00B0H  NOT USED
+SADDR. . . . . . . . . . . . . . . .  D  ADDR  00A9H  NOT USED
+SADDR_0. . . . . . . . . . . . . . .  D  ADDR  00A9H  NOT USED
+SADDR_1. . . . . . . . . . . . . . .  D  ADDR  00AAH  NOT USED
+SADEN. . . . . . . . . . . . . . . .  D  ADDR  00B9H  NOT USED
+SADEN_0. . . . . . . . . . . . . . .  D  ADDR  00B9H  NOT USED
+SADEN_1. . . . . . . . . . . . . . .  D  ADDR  00BAH  NOT USED
+SBUF . . . . . . . . . . . . . . . .  D  ADDR  0099H  NOT USED
+SCON . . . . . . . . . . . . . . . .  D  ADDR  0098H  NOT USED
+SEQUENCE . . . . . . . . . . . . . .  N  NUMB  0040H
+SINT . . . . . . . . . . . . . . . .  C  ADDR  0023H  NOT USED
+SM0. . . . . . . . . . . . . . . . .  B  ADDR  009FH  NOT USED
+SM1. . . . . . . . . . . . . . . . .  B  ADDR  009EH  NOT USED
+SM2. . . . . . . . . . . . . . . . .  B  ADDR  009DH  NOT USED
+SP . . . . . . . . . . . . . . . . .  D  ADDR  0081H  NOT USED
+SPCON. . . . . . . . . . . . . . . .  D  ADDR  00C3H  NOT USED
+SPCR . . . . . . . . . . . . . . . .  D  ADDR  00D5H  NOT USED
+SPDAT. . . . . . . . . . . . . . . .  D  ADDR  00C5H  NOT USED
+SPDR . . . . . . . . . . . . . . . .  D  ADDR  0086H  NOT USED
+SPSR . . . . . . . . . . . . . . . .  D  ADDR  00AAH  NOT USED
+SPSTA. . . . . . . . . . . . . . . .  D  ADDR  00C4H  NOT USED
+START. . . . . . . . . . . . . . . .  C  ADDR  0134H
+START_SW . . . . . . . . . . . . . .  N  NUMB  00B7H
+T0 . . . . . . . . . . . . . . . . .  B  ADDR  00B4H  NOT USED
+T1 . . . . . . . . . . . . . . . . .  B  ADDR  00B5H  NOT USED
+T2CON. . . . . . . . . . . . . . . .  D  ADDR  00C8H  NOT USED
+T2MOD. . . . . . . . . . . . . . . .  D  ADDR  00C9H  NOT USED
+TB8. . . . . . . . . . . . . . . . .  B  ADDR  009BH  NOT USED
+TCLK . . . . . . . . . . . . . . . .  B  ADDR  00CCH  NOT USED
+TCON . . . . . . . . . . . . . . . .  D  ADDR  0088H  NOT USED
+TF0. . . . . . . . . . . . . . . . .  B  ADDR  008DH  NOT USED
+TF1. . . . . . . . . . . . . . . . .  B  ADDR  008FH  NOT USED
+TF2. . . . . . . . . . . . . . . . .  B  ADDR  00CFH  NOT USED
+TH0. . . . . . . . . . . . . . . . .  D  ADDR  008CH  NOT USED
+TH1. . . . . . . . . . . . . . . . .  D  ADDR  008DH  NOT USED
+TH2. . . . . . . . . . . . . . . . .  D  ADDR  00CDH  NOT USED
+TI . . . . . . . . . . . . . . . . .  B  ADDR  0099H  NOT USED
+TIMER0 . . . . . . . . . . . . . . .  C  ADDR  000BH  NOT USED
+TIMER1 . . . . . . . . . . . . . . .  C  ADDR  001BH  NOT USED
+TIMER2 . . . . . . . . . . . . . . .  C  ADDR  002BH  NOT USED
+TL0. . . . . . . . . . . . . . . . .  D  ADDR  008AH
+TL1. . . . . . . . . . . . . . . . .  D  ADDR  008BH  NOT USED
+TL2. . . . . . . . . . . . . . . . .  D  ADDR  00CCH  NOT USED
+TMOD . . . . . . . . . . . . . . . .  D  ADDR  0089H
+TR0. . . . . . . . . . . . . . . . .  B  ADDR  008CH
+TR1. . . . . . . . . . . . . . . . .  B  ADDR  008EH  NOT USED
+TR2. . . . . . . . . . . . . . . . .  B  ADDR  00CAH  NOT USED
+TXD. . . . . . . . . . . . . . . . .  B  ADDR  00B1H  NOT USED
+WAIT_START_SW. . . . . . . . . . . .  C  ADDR  0136H
+WDTCON . . . . . . . . . . . . . . .  D  ADDR  00A7H  NOT USED
+WDTPRG . . . . . . . . . . . . . . .  D  ADDR  00A7H  NOT USED
+WDTRST . . . . . . . . . . . . . . .  D  ADDR  00A6H  NOT USED
+WR . . . . . . . . . . . . . . . . .  B  ADDR  00B6H  NOT USED
+WRONG_LED. . . . . . . . . . . . . .  N  NUMB  00B0H
+YELLOW_LED . . . . . . . . . . . . .  N  NUMB  0096H
+YELLOW_SW. . . . . . . . . . . . . .  N  NUMB  00B4H
+YELLOW_SW_INPUT. . . . . . . . . . .  C  ADDR  00C1H
