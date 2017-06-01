@@ -16,341 +16,333 @@ sulotion                                                                        
                         15     ;along with this program; if not, write to the Free Software
                         16     ;Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
                         17
-                        18     #include "8051equ.inc"
-****ERROR: Unknown keyword: `#include'
-	`#include' is neither macro nor instruction nor directive
-                        19
-                        20     ; start switch
-  00B7                  21     start_sw    .equ    P3.7
-                        22
-                        23     ; input switches
-  00B2                  24     red_sw        .equ    P3.2
-  00B3                  25     green_sw    .equ    P3.3
-  00B4                  26     yellow_sw    .equ    P3.4
-  00B5                  27     blue_sw    .equ    P3.5
-                        28
-                        29     ; output LED's
-  0094                  30     red_led    .equ    P1.4
-  0095                  31     green_led    .equ    P1.5
-  0096                  32     yellow_led    .equ    P1.6
-  0097                  33     blue_led    .equ    P1.7
-                        34
-                        35
-                        36     ; status LED's
-  00B0                  37     wrong_led    .equ    P3.0
-  00B1                  38     right_led    .equ    P3.1
-                        39
-  0030                  40     counter    .equ    30h
-  0031                  41     input_val    .equ    31h
-  0040                  42     sequence        .equ    40h
-                        43
-                        44     .org    00h
-                        45         ajmp    start
-                        46
-                        47     .org    03h
-                        48         reti
-                        49
-                        50     .org    0bh
-                        51         reti
-                        52
-                        53     .org    13h
-                        54         reti
-                        55
-                        56     .org    1bh
-                        57         reti
-                        58
-                        59     .org    23h
-                        60         reti
-                        61
-                        62     .org    25h
-                        63         reti
-                        64
-                        65     ; delay for short time
-                        66     delay_short:
-                        67         mov    r7, #0ffh
-                        68         djnz    r7, $
-                        69         ret
-                        70
-                        71     ; delay longer
-                        72     delay_medium:
-                        73         mov    r6, #0ffh
-                        74     loop_delay_medium:
-                        75         acall    delay_short
-                        76         djnz    r6, loop_delay_medium
-                        77         ret
-                        78
-                        79     ; delay even longer
-                        80     delay_long:
-                        81         mov    r5, #04h
-                        82     loop_delay_long:
-                        83         acall    delay_medium
-                        84         djnz    r5, loop_delay_long
-                        85         ret
-                        86
-                        87     ; flash red status led 3 times
-                        88     ; to be used after incorrect input sequence
-                        89     flash_wrong:
-                        90         clr    wrong_led
-                        91         acall    delay_medium
-                        92         setb    wrong_led
-                        93         acall    delay_medium
-                        94         clr    wrong_led
-                        95         acall    delay_medium
-                        96         setb    wrong_led
-                        97         acall    delay_medium
-                        98         clr    wrong_led
-                        99         acall    delay_medium
-                       100         setb    wrong_led
-                       101         ret
-                       102
-                       103     ; flash green status led once
-                       104     ; to be used after every correct user input sequence
-                       105     flash_right:
-                       106         clr    right_led
-                       107         acall    delay_medium
-                       108         setb    right_led
-                       109         ret
-                       110
-                       111     ; flash green status led 3 times
-                       112     ; to be used after counter is maxed out
-                       113     flash_win:
-                       114         clr    right_led
-                       115         acall    delay_medium
-                       116         setb    right_led
-                       117         acall    delay_medium
-                       118         clr    right_led
-                       119         acall    delay_medium
-                       120         setb    right_led
-                       121         acall    delay_medium
-                       122         clr    right_led
-                       123         acall    delay_medium
-                       124         setb    right_led
-                       125         ret
-                       126
-                       127     ; flash the red led
-                       128     flash_red:
-                       129         clr    red_led
-                       130         acall    delay_medium
-                       131         setb    red_led
-                       132         ret
-                       133
-                       134     ; flash the green led
-                       135     flash_green:
-                       136         clr    green_led
-                       137         acall    delay_medium
-                       138         setb    green_led
-                       139         ret
-                       140
-                       141     ; flash the yellow led
-                       142     flash_yellow:
-                       143         clr    yellow_led
-                       144         acall    delay_medium
-                       145         setb    yellow_led
-                       146         ret
-                       147
-                       148     ; flash the blue led
-                       149     flash_blue:
-                       150         clr    blue_led
-                       151         acall    delay_medium
-                       152         setb    blue_led
-                       153         ret
-                       154
-                       155     ; add extra random byte to sequence sequence
-                       156     add_random:
-                       157         mov    a, #sequence
-                       158         add    a, counter
-                       159         mov    r0, a
-                       160         mov    a, TL0
-                       161
-                       162         ; divide timer value by 2 - fix odd/even issues
-                       163         mov    B, #02h
-                       164         div    ab
-                       165
-                       166         ; isolate lowest 2 bits (random byte will be 0 - 3)
-                       167         mov    B, #040h
-                       168         mul    ab
-                       169         mov    B, #040h
-                       170         div    ab
-                       171
-                       172         mov    @r0, a
-                       173         inc    counter
-                       174         ret
-                       175
-                       176     ; read input switch
-                       177     ; store value in input_val
-                       178     ; input_val is modified as follows:
-                       179     ; 0 - red switch was pressed
-                       180     ; 1 - green switch was pressed
-                       181     ; 2 - yellow switch was pressed
-                       182     ; 3 - blue switch was pressed
-                       183     read_switch:
-                       184         jnb    blue_sw, blue_sw_input
-                       185         jnb    yellow_sw, yellow_sw_input
-                       186         jnb    green_sw, green_sw_input
-                       187         jnb    red_sw, red_sw_input
-                       188         ajmp    read_switch
-                       189     red_sw_input:
-                       190         acall    flash_red
-                       191         mov    input_val, #00h
-                       192         jnb    red_sw, $
-                       193         ret
-                       194     green_sw_input:
-                       195         acall    flash_green
-                       196         mov    input_val, #01h
-                       197         jnb    green_sw, $
-                       198         ret
-                       199     yellow_sw_input:
-                       200         acall    flash_yellow
-                       201         mov    input_val, #02h
-                       202         jnb    yellow_sw, $
-                       203         ret
-                       204     blue_sw_input:
-                       205         acall    flash_blue
-                       206         mov    input_val, #03h
-                       207         jnb    blue_sw, $
-                       208         ret
-                       209
-                       210     ; flash entire sequence of sequence
-                       211     flash_sequence:
-                       212         mov    r0, #00h
-                       213     flash_sequence_loop:
-                       214         mov    a, counter
-                       215         subb    a, r0
-                       216         jz    flash_sequence_loop_end
-                       217
-                       218         mov    a, #sequence
-                       219         add    a, r0
-                       220         mov    r1, a
-                       221         mov    a, @r1
-                       222
-                       223         ; if sequence is 0 - flash red led
-                       224         jz    flash_sequence_red
-                       225
-                       226         ; if sequence is 1 - flash green led
-                       227         subb    a, #01h
-                       228         jz    flash_sequence_green
-                       229
-                       230         ; if sequence is 2 - flash yellow led
-                       231         subb    a, #01h
-                       232         jz    flash_sequence_yellow
-                       233
-                       234         ; else (sequence is 3) - flash blue led
-                       235         ajmp    flash_sequence_blue
-                       236
-                       237     flash_sequence_red:
-                       238         acall    flash_red
-                       239         ajmp    flash_sequence_over
-                       240     flash_sequence_green:
-                       241         acall    flash_green
-                       242         ajmp    flash_sequence_over
-                       243     flash_sequence_yellow:
-                       244         acall    flash_yellow
-                       245         ajmp    flash_sequence_over
-                       246     flash_sequence_blue:
-                       247         acall    flash_blue
-                       248
-                       249     flash_sequence_over:
-                       250         acall    delay_long
-                       251
-                       252         inc    r0
-                       253         ajmp    flash_sequence_loop
-                       254     flash_sequence_loop_end:
-                       255         ret
-                       256
-                       257     ; read switch and compare user input to stored sequence
-                       258     accept_input:
-                       259         mov    r0, #00h
-                       260         mov    r4, #00h
-                       261     accept_input_loop:
-                       262         mov    a, counter
-                       263         subb    a, r0
-                       264         jz    accept_input_loop_end
+                        18     ; start switch
+  00B7                  19     start_sw    .equ    P3.7
+                        20
+                        21     ; input switches
+  00B2                  22     red_sw        .equ    P3.2
+  00B3                  23     green_sw    .equ    P3.3
+  00B4                  24     yellow_sw    .equ    P3.4
+  00B5                  25     blue_sw    .equ    P3.5
+                        26
+                        27     ; output LED's
+  0094                  28     red_led    .equ    P1.4
+  0095                  29     green_led    .equ    P1.5
+  0096                  30     yellow_led    .equ    P1.6
+  0097                  31     blue_led    .equ    P1.7
+                        32
+                        33
+                        34     ; status LED's
+  00B0                  35     wrong_led    .equ    P3.0
+  00B1                  36     right_led    .equ    P3.1
+                        37
+  0030                  38     counter    .equ    30h
+  0031                  39     input_val    .equ    31h
+  0040                  40     sequence        .equ    40h
+                        41
+                        42     .org    00h
+0000 2134               43         ajmp    start
+                        44
+                        45     .org    03h
+0003 32                 46         reti
+                        47
+                        48     .org    0bh
+000B 32                 49         reti
+                        50
+                        51     .org    13h
+0013 32                 52         reti
+                        53
+                        54     .org    1bh
+001B 32                 55         reti
+                        56
+                        57     .org    23h
+0023 32                 58         reti
+                        59
+                        60     .org    25h
+0025 32                 61         reti
+                        62
+                        63     ; delay for short time
+                        64     delay_short:
+0026 7FFF               65         mov    r7, #0ffh
+0028 DFFE               66         djnz    r7, $
+002A 22                 67         ret
+                        68
+                        69     ; delay longer
+                        70     delay_medium:
+002B 7EFF               71         mov    r6, #0ffh
+                        72     loop_delay_medium:
+002D 1126               73         acall    delay_short
+002F DEFC               74         djnz    r6, loop_delay_medium
+0031 22                 75         ret
+                        76
+                        77     ; delay even longer
+                        78     delay_long:
+0032 7D04               79         mov    r5, #04h
+                        80     loop_delay_long:
+0034 112B               81         acall    delay_medium
+0036 DDFC               82         djnz    r5, loop_delay_long
+0038 22                 83         ret
+                        84
+                        85     ; flash red status led 3 times
+                        86     ; to be used after incorrect input sequence
+                        87     flash_wrong:
+0039 C2B0               88         clr    wrong_led
+003B 112B               89         acall    delay_medium
+003D D2B0               90         setb    wrong_led
+003F 112B               91         acall    delay_medium
+0041 C2B0               92         clr    wrong_led
+0043 112B               93         acall    delay_medium
+0045 D2B0               94         setb    wrong_led
+0047 112B               95         acall    delay_medium
+0049 C2B0               96         clr    wrong_led
+004B 112B               97         acall    delay_medium
+004D D2B0               98         setb    wrong_led
+004F 22                 99         ret
+                       100
+                       101     ; flash green status led once
+                       102     ; to be used after every correct user input sequence
+                       103     flash_right:
+0050 C2B1              104         clr    right_led
+0052 112B              105         acall    delay_medium
+0054 D2B1              106         setb    right_led
+0056 22                107         ret
+                       108
+                       109     ; flash green status led 3 times
+                       110     ; to be used after counter is maxed out
+                       111     flash_win:
+0057 C2B1              112         clr    right_led
+0059 112B              113         acall    delay_medium
+005B D2B1              114         setb    right_led
+005D 112B              115         acall    delay_medium
+005F C2B1              116         clr    right_led
+0061 112B              117         acall    delay_medium
+0063 D2B1              118         setb    right_led
+0065 112B              119         acall    delay_medium
+0067 C2B1              120         clr    right_led
+0069 112B              121         acall    delay_medium
+006B D2B1              122         setb    right_led
+006D 22                123         ret
+                       124
+                       125     ; flash the red led
+                       126     flash_red:
+006E C294              127         clr    red_led
+0070 112B              128         acall    delay_medium
+0072 D294              129         setb    red_led
+0074 22                130         ret
+                       131
+                       132     ; flash the green led
+                       133     flash_green:
+0075 C295              134         clr    green_led
+0077 112B              135         acall    delay_medium
+0079 D295              136         setb    green_led
+007B 22                137         ret
+                       138
+                       139     ; flash the yellow led
+                       140     flash_yellow:
+007C C296              141         clr    yellow_led
+007E 112B              142         acall    delay_medium
+0080 D296              143         setb    yellow_led
+0082 22                144         ret
+                       145
+                       146     ; flash the blue led
+                       147     flash_blue:
+0083 C297              148         clr    blue_led
+0085 112B              149         acall    delay_medium
+0087 D297              150         setb    blue_led
+0089 22                151         ret
+                       152
+                       153     ; add extra random byte to sequence sequence
+                       154     add_random:
+008A 7440              155         mov    a, #sequence
+008C 2530              156         add    a, counter
+008E F8                157         mov    r0, a
+008F E58A              158         mov    a, TL0
+                       159
+                       160         ; divide timer value by 2 - fix odd/even issues
+0091 75F002            161         mov    B, #02h
+0094 84                162         div    ab
+                       163
+                       164         ; isolate lowest 2 bits (random byte will be 0 - 3)
+0095 75F040            165         mov    B, #040h
+0098 A4                166         mul    ab
+0099 75F040            167         mov    B, #040h
+009C 84                168         div    ab
+                       169
+009D F6                170         mov    @r0, a
+009E 0530              171         inc    counter
+00A0 22                172         ret
+                       173
+                       174     ; read input switch
+                       175     ; store value in input_val
+                       176     ; input_val is modified as follows:
+                       177     ; 0 - red switch was pressed
+                       178     ; 1 - green switch was pressed
+                       179     ; 2 - yellow switch was pressed
+                       180     ; 3 - blue switch was pressed
+                       181     read_switch:
+00A1 30B526            182         jnb    blue_sw, blue_sw_input
+00A4 30B41A            183         jnb    yellow_sw, yellow_sw_input
+00A7 30B30E            184         jnb    green_sw, green_sw_input
+00AA 30B202            185         jnb    red_sw, red_sw_input
+00AD 01A1              186         ajmp    read_switch
+                       187     red_sw_input:
+00AF 116E              188         acall    flash_red
+00B1 753100            189         mov    input_val, #00h
+00B4 30B2FD            190         jnb    red_sw, $
+00B7 22                191         ret
+                       192     green_sw_input:
+00B8 1175              193         acall    flash_green
+00BA 753101            194         mov    input_val, #01h
+00BD 30B3FD            195         jnb    green_sw, $
+00C0 22                196         ret
+                       197     yellow_sw_input:
+00C1 117C              198         acall    flash_yellow
+00C3 753102            199         mov    input_val, #02h
+00C6 30B4FD            200         jnb    yellow_sw, $
+00C9 22                201         ret
+                       202     blue_sw_input:
+00CA 1183              203         acall    flash_blue
+00CC 753103            204         mov    input_val, #03h
+00CF 30B5FD            205         jnb    blue_sw, $
+00D2 22                206         ret
+                       207
+                       208     ; flash entire sequence of sequence
+                       209     flash_sequence:
+00D3 7800              210         mov    r0, #00h
+                       211     flash_sequence_loop:
+00D5 E530              212         mov    a, counter
+00D7 98                213         subb    a, r0
+00D8 6024              214         jz    flash_sequence_loop_end
+                       215
+00DA 7440              216         mov    a, #sequence
+00DC 28                217         add    a, r0
+00DD F9                218         mov    r1, a
+00DE E7                219         mov    a, @r1
+                       220
+                       221         ; if sequence is 0 - flash red led
+00DF 600A              222         jz    flash_sequence_red
+                       223
+                       224         ; if sequence is 1 - flash green led
+00E1 9401              225         subb    a, #01h
+00E3 600A              226         jz    flash_sequence_green
+                       227
+                       228         ; if sequence is 2 - flash yellow led
+00E5 9401              229         subb    a, #01h
+00E7 600A              230         jz    flash_sequence_yellow
+                       231
+                       232         ; else (sequence is 3) - flash blue led
+00E9 01F7              233         ajmp    flash_sequence_blue
+                       234
+                       235     flash_sequence_red:
+00EB 116E              236         acall    flash_red
+00ED 01F9              237         ajmp    flash_sequence_over
+                       238     flash_sequence_green:
+00EF 1175              239         acall    flash_green
+00F1 01F9              240         ajmp    flash_sequence_over
+                       241     flash_sequence_yellow:
+00F3 117C              242         acall    flash_yellow
+00F5 01F9              243         ajmp    flash_sequence_over
+                       244     flash_sequence_blue:
+00F7 1183              245         acall    flash_blue
+                       246
+                       247     flash_sequence_over:
+00F9 1132              248         acall    delay_long
+                       249
+00FB 08                250         inc    r0
+00FC 01D5              251         ajmp    flash_sequence_loop
+                       252     flash_sequence_loop_end:
+00FE 22                253         ret
+                       254
+                       255     ; read switch and compare user input to stored sequence
+                       256     accept_input:
+00FF 7800              257         mov    r0, #00h
+0101 7C00              258         mov    r4, #00h
+                       259     accept_input_loop:
+0103 E530              260         mov    a, counter
+0105 98                261         subb    a, r0
+0106 6012              262         jz    accept_input_loop_end
+                       263
+0108 11A1              264         acall    read_switch
                        265
-                       266         acall    read_switch
-                       267
-                       268         mov    a, #sequence
-                       269         add    a, r0
-                       270         mov    r1, a
-                       271         mov    a, @r1
-                       272
-                       273         subb    a, input_val
-                       274         jz    accept_input_loop_cont
-                       275         mov    r4, #01h
-                       276         ajmp    accept_input_loop_end
+010A 7440              266         mov    a, #sequence
+010C 28                267         add    a, r0
+010D F9                268         mov    r1, a
+010E E7                269         mov    a, @r1
+                       270
+010F 9531              271         subb    a, input_val
+0111 6004              272         jz    accept_input_loop_cont
+0113 7C01              273         mov    r4, #01h
+0115 211A              274         ajmp    accept_input_loop_end
+                       275
+                       276     accept_input_loop_cont:
                        277
-                       278     accept_input_loop_cont:
-                       279
-                       280         inc    r0
-                       281         ajmp    accept_input_loop
-                       282
-                       283     accept_input_loop_end:
-                       284         ret
-                       285
-                       286     init:
-                       287         ; timer 0 - 16 bit mode
-                       288         mov    TMOD, #01h
-                       289         setb    TR0
-                       290
-                       291         mov    PSW, #00h
-                       292         mov    IE, #00h
-                       293
-                       294         ; initialize counter
-                       295         mov    counter, #00h
-                       296
-                       297         ; activate switches
-                       298         setb    red_sw
-                       299         setb    green_sw
-                       300         setb    yellow_sw
-                       301         setb    blue_sw
-                       302         setb    start_sw
+0117 08                278         inc    r0
+0118 2103              279         ajmp    accept_input_loop
+                       280
+                       281     accept_input_loop_end:
+011A 22                282         ret
+                       283
+                       284     init:
+                       285         ; timer 0 - 16 bit mode
+011B 758901            286         mov    TMOD, #01h
+011E D28C              287         setb    TR0
+                       288
+0120 75D000            289         mov    PSW, #00h
+0123 75A800            290         mov    IE, #00h
+                       291
+                       292         ; initialize counter
+0126 753000            293         mov    counter, #00h
+                       294
+                       295         ; activate switches
+0129 D2B2              296         setb    red_sw
+012B D2B3              297         setb    green_sw
+012D D2B4              298         setb    yellow_sw
+012F D2B5              299         setb    blue_sw
+0131 D2B7              300         setb    start_sw
+                       301
+0133 22                302         ret
                        303
-                       304         ret
-                       305
-                       306     start:
-                       307         acall    init
-                       308
-                       309     ; wait for user to press and release start switch
-                       310     wait_start_sw:
-                       311         jb    start_sw, $
-                       312         jnb    start_sw, $
-                       313
-                       314         acall    delay_long
-                       315         acall    delay_long
-                       316
-                       317     loop:
-                       318         acall    add_random
-                       319         acall    flash_sequence
-                       320         acall    accept_input
+                       304     start:
+0134 311B              305         acall    init
+                       306
+                       307     ; wait for user to press and release start switch
+                       308     wait_start_sw:
+0136 20B7FD            309         jb    start_sw, $
+0139 30B7FD            310         jnb    start_sw, $
+                       311
+013C 1132              312         acall    delay_long
+013E 1132              313         acall    delay_long
+                       314
+                       315     loop:
+0140 118A              316         acall    add_random
+0142 11D3              317         acall    flash_sequence
+0144 11FF              318         acall    accept_input
+                       319
+0146 1132              320         acall    delay_long
                        321
-                       322         acall    delay_long
-                       323
-                       324         mov    a, r4
-                       325         jz    cont1
-                       326
-                       327         acall    flash_wrong
-                       328         mov    counter, #00h
-                       329         ajmp    wait_start_sw
-                       330
-                       331     cont1:
-                       332         mov    a, counter
-                       333         cjne    a, #0Ah, cont2
-                       334
-                       335         acall    flash_win
-                       336         mov    counter, #00h
-                       337         ajmp    wait_start_sw
-                       338
-                       339     cont2:
-                       340         acall    flash_right
-                       341         acall    delay_long
-                       342         ajmp    loop
-                       343
-                       344     .end
-ASSEMBLY COMPLETE, 1 ERROR FOUND, NO WARNINGS
+0148 EC                322         mov    a, r4
+0149 6007              323         jz    cont1
+                       324
+014B 1139              325         acall    flash_wrong
+014D 753000            326         mov    counter, #00h
+0150 2136              327         ajmp    wait_start_sw
+                       328
+                       329     cont1:
+0152 E530              330         mov    a, counter
+0154 B40A07            331         cjne    a, #0Ah, cont2
+                       332
+0157 1157              333         acall    flash_win
+0159 753000            334         mov    counter, #00h
+015C 2136              335         ajmp    wait_start_sw
+                       336
+                       337     cont2:
+015E 1150              338         acall    flash_right
+0160 1132              339         acall    delay_long
+0162 2140              340         ajmp    loop
+                       341
+                       342     .end
+ASSEMBLY COMPLETE, NO ERRORS FOUND, NO WARNINGS
 
-
-ERROR SUMMARY:
-Line 18, ERROR: Unknown keyword: `#include'
-	`#include' is neither macro nor instruction nor directive
 
 SYMBOL TABLE:
 ??MCU_8051_IDE . . . . . . . . . . .  N  NUMB  8051H  NOT USED

@@ -63,13 +63,13 @@ sulotion                                                                        
                         62
                         63     ; delay for short time
                         64     delay_short:
-0026 7FFF               65         mov    r7, #0ffh
+0026 7F01               65         mov    r7, #0001h
 0028 DFFE               66         djnz    r7, $
 002A 22                 67         ret
                         68
                         69     ; delay longer
                         70     delay_medium:
-002B 7EFF               71         mov    r6, #0ffh
+002B 7E01               71         mov    r6, #0001h
                         72     loop_delay_medium:
 002D 1126               73         acall    delay_short
 002F DEFC               74         djnz    r6, loop_delay_medium

@@ -62,13 +62,13 @@ sequence        .equ    40h
 
 ; delay for short time
 delay_short:
-    mov    r7, #0ffh
+    mov    r7, #0001h
     djnz    r7, $
     ret
 
 ; delay longer
 delay_medium:
-    mov    r6, #0ffh
+    mov    r6, #0001h
 loop_delay_medium:
     acall    delay_short
     djnz    r6, loop_delay_medium

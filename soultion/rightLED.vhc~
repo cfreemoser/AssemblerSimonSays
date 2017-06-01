@@ -2,4 +2,4 @@
 # Project: SimonHello1(0)
 # Component: LED Panel
 
-LedPanel {{4 - 0 1 5 - 1 1 6 - 2 1 7 - 3 1} {4 - 0 3 5 - 1 2 6 - 2 1 7 - 3 0} {} {LED Panel} blue}
+LedPanel {{4 - 0 - 5 - 1 - 6 - 2 - 7 - 3 -} {4 - 0 - 5 - 1 - 6 - 2 - 7 - 3 -} {} {} green}
